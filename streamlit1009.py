@@ -2,21 +2,37 @@ from io import StringIO
 from datetime import datetime
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 import time
 import numpy as np
 
-st.write('上传文件')
-uploaded_file = st.file_uploader("Upload txt", type=".txt")
+st.set_page_config(
+    page_title="解析txt",
+    page_icon=":chart_with_upwards_trend:", #Emoji Shortcode（快捷代码）
+    # layout="wide",
+    initial_sidebar_state="expanded",
+    # menu_items={
+    #     'Get Help': 'https://www.extremelycoolapp.com/help',
+    #     'Report a bug': "https://www.extremelycoolapp.com/bug",
+    #     'About': "# This is a header. This is an *extremely* cool app!"
+    # }
+)
+
+st.title(":chart_with_upwards_trend:"+"数据解析")
+st.write('目前可以实现的功能：上传txt文件，自动解析障碍物和车道线数据，并提供csv下载。并绘制鸟瞰动图。')
+
+uploaded_file = st.file_uploader("上传txt文件", type=".txt")
+
+use_example_file = st.checkbox(
+    "Use example file", False, help="Use in-built example file to demo the app"
+)
 
 @st.cache(allow_output_mutation=True,suppress_st_warning=True)
-def read_txt(uploaded_file):
-    # To convert to a string based IO:
-    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
-    # st.write(stringio)
-    # To read file as string:
-    lines = stringio.readlines()
+def read_txt(lines):
+    # # To convert to a string based IO:
+    # stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+    # # To read file as string:
+    # lines = stringio.readlines()
 
     obs=[]
     lanes=[]
@@ -252,10 +268,10 @@ def plot_bird_eye(dataframe_obs,dataframe_lans,frame_min=0,frame_max=999999999):
     # for i in dataset_by_frameid.index:
             x0=float(dataset_by_frameid.iloc[i]["pos_x"])
             v_x=float(dataset_by_frameid.iloc[i]["vel_x"])
-            x1=x0+float(dataset_by_frameid.iloc[i]["vel_x"])*10
+            x1=x0+float(dataset_by_frameid.iloc[i]["vel_x"])*5
             y0=float(dataset_by_frameid.iloc[i]["pos_y"])
             v_y = float(dataset_by_frameid.iloc[i]["vel_y"])
-            y1=y0+float(dataset_by_frameid.iloc[i]["vel_y"])*10
+            y1=y0+float(dataset_by_frameid.iloc[i]["vel_y"])*5
             data_dict_vec = dict(x=[y0, y1],
                                  y=[x0, x1],
                                  mode="lines",
@@ -350,10 +366,10 @@ def plot_bird_eye(dataframe_obs,dataframe_lans,frame_min=0,frame_max=999999999):
                 # for i in dataset_by_frameid.index:
                 x0 = float(dataset_by_frameid.iloc[i]["pos_x"])
                 v_x = float(dataset_by_frameid.iloc[i]["vel_x"])
-                x1 = x0 + float(dataset_by_frameid.iloc[i]["vel_x"]) * 10
+                x1 = x0 + float(dataset_by_frameid.iloc[i]["vel_x"]) * 5
                 y0 = float(dataset_by_frameid.iloc[i]["pos_y"])
                 v_y = float(dataset_by_frameid.iloc[i]["vel_y"])
-                y1 = y0 + float(dataset_by_frameid.iloc[i]["vel_y"]) * 10
+                y1 = y0 + float(dataset_by_frameid.iloc[i]["vel_y"]) * 5
                 data_dict_vec = dict(x=[y0, y1],
                                      y=[x0, x1],
                                      mode="lines",
@@ -394,12 +410,27 @@ def plot_bird_eye(dataframe_obs,dataframe_lans,frame_min=0,frame_max=999999999):
     # 根据前面的图表字典创建图表对象fig
     fig = go.Figure(fig_dict)
     return fig
-
+data=0
+# If CSV is not uploaded and checkbox is filled, use values from the example file
+# and pass them down to the next if block
+if uploaded_file is None:
+    if use_example_file:
+        with open('example.txt') as file_object:
+            # line = file_object.readline()  # 读取一行;指针自动下移
+            lines = file_object.readlines()  # 读取每一行存在一个列表中
+        df_lanes, df_obs = read_txt(lines)
+        data=1
+        # st.write(df_lanes)
 
 if uploaded_file is not None:
-    read_txt(uploaded_file)
-    df_lanes,df_obs = read_txt(uploaded_file)
+    # read_txt(uploaded_file)
+    stringio = StringIO(uploaded_file.getvalue().decode("utf-8"))
+    lines = stringio.readlines()
+    df_lanes,df_obs = read_txt(lines)
+    data=1
 
+
+if data==1:
     obs_frame_min,obs_frame_max,lans_frame_min,lans_frame_max,time_begin_obs,time_end_obs,delta_s_obs,time_begin_lanes,time_end_lanes,delta_s_lanes=jiexi(df_lanes,df_obs)
     st.write("障碍物最小帧:{}，最大帧:{}。开始时间：{}，结束时间：{}。持续时间：{}秒".format(obs_frame_min,obs_frame_max,time_begin_obs,time_end_obs,delta_s_obs))
     # 转换格式后下载
